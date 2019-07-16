@@ -27,6 +27,7 @@ const mostBlogs = (blogs) => {
     return null
   }
 
+  /* first attempt (works)
   // create an object that contains {author: [blogs], ...}
   const blogsByAuthor = _.groupBy(blogs, 'author')
   // amount of blogs is simply the length of each list in blogsByAuthor  
@@ -38,11 +39,23 @@ const mostBlogs = (blogs) => {
       authorOfMost = key
     }
   })
+
   return {
     author: authorOfMost,
     blogs: mostAmountOfBlogs
   }
+  */
+
+  // a simpler version :) (or at least shorter)
+  const amountsByAuthor = _.countBy(blogs, 'author')
+  const maxKey = _.max(Object.keys(amountsByAuthor), o => obj[o])
+  return {
+    author: maxKey,
+    blogs: amountsByAuthor[maxKey]
+  }
+
 }
+
 
 module.exports = {
   dummy,
