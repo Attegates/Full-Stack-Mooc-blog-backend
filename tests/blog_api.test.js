@@ -33,6 +33,33 @@ test('returned blogs have identifier field defined and it is defined as "id"', a
 })
 
 
+test('a valid blog can be added', async () => {
+  const newBlog = {
+    title: "BLACK METAL IST KRIEG",
+    author: "Atte Gates",
+    url: "666",
+    likes: 14,
+  }
+
+  await api
+    .post(API_BASE_URL)
+    .send(newBlog)
+    .expect(200)
+    .expect('Content-Type', /application\/json/)
+
+  const blogsAtEnd = await helper.blogsInDb()
+  expect(blogsAtEnd.length).toBe(helper.initialBlogs.length + 1)
+
+  expect(blogsAtEnd).toContainEqual({
+    id: expect.any(String),    
+    title: "BLACK METAL IST KRIEG",
+    author: "Atte Gates",
+    url: "666",
+    likes: 14,
+  })
+
+})
+
 afterAll(() => {
   mongoose.connection.close()
 })
