@@ -20,8 +20,16 @@ beforeEach(async () => {
 
 test('all blogs are returned', async () => {
   const response = await api.get(API_BASE_URL)
-
   expect(response.body.length).toBe(helper.initialBlogs.length)
+})
+
+test('returned blogs have identifier field defined and it is defined as "id"', async () => {
+  const blogs = await helper.blogsInDb()
+
+  blogs.forEach(blog => {
+    expect(blog.id).toBeDefined()
+  })
+
 })
 
 
