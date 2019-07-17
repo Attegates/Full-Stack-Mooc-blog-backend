@@ -128,6 +128,40 @@ describe('when there is initial blogs saved', () => {
       expect(blogsAtEnd.length).toBe(helper.initialBlogs.length)
     })
   })
+
+  describe('deleting a blog', () => {
+    test('existing blog is deleted and returns 204', async () => {
+      const blogsAtStart = await helper.blogsInDb()
+      const blogToDelete = blogsAtStart[0]
+
+      await api
+        .delete(`${API_BASE_URL}/${blogToDelete.id}`)
+        .expect(204)
+
+      const blogsAtEnd = await helper.blogsInDb()
+
+      expect(blogsAtEnd.length).toBe(helper.initialBlogs.length - 1)
+
+      const ids = blogsAtEnd.map(blog => blog.id)
+
+      expect(ids).not.toContain(blogToDelete.id)
+
+    })
+    test('DELETE to non existing id does not remove anything and returns 204', async () => {
+      const blogsAtStart = await helper.blogsInDb()
+
+      const nonExistingId = await helper.nonExistingId()
+
+      await api
+        .delete(`${API_BASE_URL}/${nonExistingId}`)
+        .expect(204)
+
+      const blogsAtEnd = await helper.blogsInDb()
+
+      expect(blogsAtEnd.length).toBe(helper.initialBlogs.length)
+    })
+  })
+
 })
 
 afterAll(() => {
