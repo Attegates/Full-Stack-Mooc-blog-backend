@@ -51,11 +51,35 @@ test('a valid blog can be added', async () => {
   expect(blogsAtEnd.length).toBe(helper.initialBlogs.length + 1)
 
   expect(blogsAtEnd).toContainEqual({
-    id: expect.any(String),    
+    id: expect.any(String),
     title: "BLACK METAL IST KRIEG",
     author: "Atte Gates",
     url: "666",
     likes: 14,
+  })
+
+})
+
+test('likes default to 0 when a blog that does not define likes is added', async () => {
+  const newBlog = {
+    title: "BLACK METAL IST KRIEG",
+    author: "Atte Gates",
+    url: "666",
+  }
+
+  await api
+    .post(API_BASE_URL)
+    .send(newBlog)
+    .expect(200)
+    .expect('Content-Type', /application\/json/)
+
+  const blogsAtEnd = await helper.blogsInDb()
+  expect(blogsAtEnd).toContainEqual({
+    id: expect.any(String),
+    title: "BLACK METAL IST KRIEG",
+    author: "Atte Gates",
+    url: "666",
+    likes: 0,
   })
 
 })
