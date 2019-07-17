@@ -84,6 +84,43 @@ test('likes default to 0 when a blog that does not define likes is added', async
 
 })
 
+test.only('when blog does not define fields "title" or "url" it is not added and response status is 400', async () => {
+  let newBlog = {
+    author: "Atte Gates",
+    likes: 14
+  }
+
+  await api
+    .post(API_BASE_URL)
+    .send(newBlog)
+    .expect(400)
+
+  newBlog = {
+    author: "Atte Gates",
+    likes: 14,
+    title: "BLACK METAL IST KRIEG"
+  }
+
+  await api
+    .post(API_BASE_URL)
+    .send(newBlog)
+    .expect(400)
+
+  newBlog = {
+    author: "Atte Gates",
+    likes: 14,
+    url: "666"
+  }
+
+  await api
+    .post(API_BASE_URL)
+    .send(newBlog)
+    .expect(400)
+
+  const blogsAtEnd = await helper.blogsInDb()
+  expect(blogsAtEnd.length).toBe(helper.initialBlogs.length)
+})
+
 afterAll(() => {
   mongoose.connection.close()
 })
