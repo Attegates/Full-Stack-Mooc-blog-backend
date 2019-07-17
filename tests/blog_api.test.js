@@ -84,7 +84,7 @@ test('likes default to 0 when a blog that does not define likes is added', async
 
 })
 
-test.only('when blog does not define fields "title" or "url" it is not added and response status is 400', async () => {
+test('when blog does not define fields "title" or "url" it is not added and response status is 400', async () => {
   let newBlog = {
     author: "Atte Gates",
     likes: 14
