@@ -162,6 +162,35 @@ describe('when there is initial blogs saved', () => {
     })
   })
 
+  describe('updating a blog', () => {
+    test('updating likes field of a blog returns blog with updated likes and amount of blogs does not change', async () => {
+      const blogsAtStart = await helper.blogsInDb()
+
+      let blogToUpdate = blogsAtStart[0]
+      const likesAtStart = blogToUpdate.likes
+      const newLikes = likesAtStart + 1
+      blogToUpdate.likes = newLikes
+
+      const response = await api
+        .put(`${API_BASE_URL}/${blogToUpdate.id}`)
+        .send(blogToUpdate)
+        .expect(200)
+
+      const blogsAtEnd = await helper.blogsInDb()
+      expect(blogsAtEnd.length).toBe(helper.initialBlogs.length)
+
+      expect(response.body).toEqual(blogToUpdate)
+
+    })
+
+    test.skip('PUT to non existing id does ??', async () => {
+      const nonExistingId = await helper.nonExistingId()
+
+      // what should it do?
+
+    })
+  })
+
 })
 
 afterAll(() => {
