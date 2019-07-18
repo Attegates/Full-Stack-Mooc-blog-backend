@@ -1,12 +1,48 @@
 const mongoose = require('mongoose')
 const supertest = require('supertest')
+const jwt = require('jsonwebtoken')
 const Blog = require('../models/blog')
+const User = require('../models/user')
 const helper = require('./blog_api_test_helper')
 const app = require('../app')
 
 const api = supertest(app)
 
-const API_BASE_URL = '/api/blogs'
+const API_BLOGS_URL = '/api/blogs'
+const API_USERS_URL = '/api/users'
+const API_LOGIN_URL = '/api/login'
+
+let token  // bearer token for authorization
+let decodedToken  // to get the id of the authorized user
+
+// create a user, login and the save the bearer token
+beforeAll(async () => {
+  await User.deleteMany({})
+  const newUser = {
+    username: 'attegates',
+    name: 'Atte Gates',
+    password: 'salasana'
+  }
+  // save by using the api because the api handles hashing the password
+  // saving straight to the db does not create a passwordHash
+  //await newUser.save()
+  await api
+    .post(API_USERS_URL)
+    .send(newUser)
+
+  await api
+  const userToLogin = {
+    username: 'attegates',
+    password: 'salasana'
+  }
+
+  const response = await api
+    .post(API_LOGIN_URL)
+    .send(userToLogin)
+
+  token = response.body.token
+  decodedToken = jwt.verify(token, process.env.SECRET)
+})
 
 describe('when there is initial blogs saved', () => {
 
@@ -23,7 +59,7 @@ describe('when there is initial blogs saved', () => {
   })
 
   test('all blogs are returned', async () => {
-    const response = await api.get(API_BASE_URL)
+    const response = await api.get(API_BLOGS_URL)
     expect(response.body.length).toBe(helper.initialBlogs.length)
   })
 
@@ -40,7 +76,7 @@ describe('when there is initial blogs saved', () => {
   describe('adding a blog', () => {
 
 
-    test('a valid blog can be added', async () => {
+    test('a valid blog can be added when request contains valid auth token', async () => {
       const newBlog = {
         title: "BLACK METAL IST KRIEG",
         author: "Atte Gates",
@@ -49,7 +85,8 @@ describe('when there is initial blogs saved', () => {
       }
 
       await api
-        .post(API_BASE_URL)
+        .post(API_BLOGS_URL)
+        .set('Authorization', `Bearer ${token}`)
         .send(newBlog)
         .expect(200)
         .expect('Content-Type', /application\/json/)
@@ -63,7 +100,45 @@ describe('when there is initial blogs saved', () => {
         author: "Atte Gates",
         url: "666",
         likes: 14,
+        user: mongoose.Types.ObjectId(decodedToken.id)  // should be the id of the user who added the entry NOTE! in Object form and decodedToken.id is in String form
       })
+
+    })
+
+    test('a blog cannot be added when request contains no auth token', async () => {
+      const newBlog = {
+        title: "BLACK METAL IST KRIEG",
+        author: "Atte Gates",
+        url: "666",
+        likes: 14,
+      }
+
+      await api
+        .post(API_BLOGS_URL)
+        .send(newBlog)
+        .expect(401)
+      const blogsAtEnd = await helper.blogsInDb()
+      expect(blogsAtEnd.length).toBe(helper.initialBlogs.length)
+
+    })
+
+    test('a blog cannot be added when request contains invalid auth token', async () => {
+      const newBlog = {
+        title: "BLACK METAL IST KRIEG",
+        author: "Atte Gates",
+        url: "666",
+        likes: 14,
+      }
+
+      const invalidToken = token.substring(1)  // cut off one character from the valid token to make it invalid
+
+      await api
+        .post(API_BLOGS_URL)
+        .set('Authorization', `Bearer ${invalidToken}`)
+        .send(newBlog)
+        .expect(401)
+      const blogsAtEnd = await helper.blogsInDb()
+      expect(blogsAtEnd.length).toBe(helper.initialBlogs.length)
 
     })
 
@@ -75,7 +150,8 @@ describe('when there is initial blogs saved', () => {
       }
 
       await api
-        .post(API_BASE_URL)
+        .post(API_BLOGS_URL)
+        .set('Authorization', `Bearer ${token}`)
         .send(newBlog)
         .expect(200)
         .expect('Content-Type', /application\/json/)
@@ -87,6 +163,7 @@ describe('when there is initial blogs saved', () => {
         author: "Atte Gates",
         url: "666",
         likes: 0,
+        user: mongoose.Types.ObjectId(decodedToken.id)
       })
 
     })
@@ -98,7 +175,7 @@ describe('when there is initial blogs saved', () => {
       }
 
       await api
-        .post(API_BASE_URL)
+        .post(API_BLOGS_URL)
         .send(newBlog)
         .expect(400)
 
@@ -109,7 +186,7 @@ describe('when there is initial blogs saved', () => {
       }
 
       await api
-        .post(API_BASE_URL)
+        .post(API_BLOGS_URL)
         .send(newBlog)
         .expect(400)
 
@@ -120,7 +197,7 @@ describe('when there is initial blogs saved', () => {
       }
 
       await api
-        .post(API_BASE_URL)
+        .post(API_BLOGS_URL)
         .send(newBlog)
         .expect(400)
 
@@ -135,7 +212,7 @@ describe('when there is initial blogs saved', () => {
       const blogToDelete = blogsAtStart[0]
 
       await api
-        .delete(`${API_BASE_URL}/${blogToDelete.id}`)
+        .delete(`${API_BLOGS_URL}/${blogToDelete.id}`)
         .expect(204)
 
       const blogsAtEnd = await helper.blogsInDb()
@@ -153,7 +230,7 @@ describe('when there is initial blogs saved', () => {
       const nonExistingId = await helper.nonExistingId()
 
       await api
-        .delete(`${API_BASE_URL}/${nonExistingId}`)
+        .delete(`${API_BLOGS_URL}/${nonExistingId}`)
         .expect(204)
 
       const blogsAtEnd = await helper.blogsInDb()
@@ -172,7 +249,7 @@ describe('when there is initial blogs saved', () => {
       blogToUpdate.likes = newLikes
 
       const response = await api
-        .put(`${API_BASE_URL}/${blogToUpdate.id}`)
+        .put(`${API_BLOGS_URL}/${blogToUpdate.id}`)
         .send(blogToUpdate)
         .expect(200)
 
