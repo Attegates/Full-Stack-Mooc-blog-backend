@@ -19,7 +19,7 @@ const newUniqueUser = {
   password: "salasana"
 }
 
-const newNonUniqueuser = initialUsers[0]
+const newNonUniqueUser = initialUsers[0]
 
 const usersInDb = async () => {
   const users = await User.find({})
@@ -29,6 +29,6 @@ const usersInDb = async () => {
 module.exports = {
   initialUsers,
   newUniqueUser,
-  newNonUniqueuser,
+  newNonUniqueUser,
   usersInDb
 }

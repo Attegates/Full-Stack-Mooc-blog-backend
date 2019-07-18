@@ -3,6 +3,7 @@ const supertest = require('supertest')
 const User = require('../models/user')
 const helper = require('./user_api_test_helper')
 const app = require('../app')
+mongoose.set('useCreateIndex', true);
 
 const api = supertest(app)
 
@@ -55,6 +56,69 @@ describe('when there is initial users saved', () => {
         username: newUser.username,
         name: newUser.name,
       })
+    })
+
+    test('creating a non unique user fails with status 400 and returns an error message', async () => {
+      const usersAtStart = await helper.usersInDb()
+
+      const newUser = helper.newNonUniqueUser
+
+      const result = await api
+        .post(API_BASE_URL)
+        .send(newUser)
+        .expect(400)
+
+      const usersAtEnd = await helper.usersInDb()
+
+      expect(usersAtEnd.length).toBe(usersAtStart.length)
+
+      expect(result.body.error).toContain('User validation failed')
+
+    })
+
+    test('creating an user with username shorter than 3 characters fails with status 400 and returns an error message', async () => {
+      const usersAtStart = await helper.usersInDb()
+
+      // username must be longer than 3 characters
+      const newUser = {
+        username: 'aa',
+        password: 'salasana'
+      }
+
+      const result = await api
+        .post(API_BASE_URL)
+        .send(newUser)
+        .expect(400)
+
+
+      const usersAtEnd = await helper.usersInDb()
+
+      expect(usersAtEnd.length).toBe(usersAtStart.length)
+
+      expect(result.body.error).toContain('User validation failed')
+
+    })
+
+    test('creating an user with no password fails with status 400 and returns an error message', async () => {
+      const usersAtStart = await helper.usersInDb()
+
+      newUser = {
+        username: 'this is long enough',
+        name: 'abcdefg'
+        //password missing
+      }
+
+      const result = await api
+        .post(API_BASE_URL)
+        .send(newUser)
+        .expect(400)
+
+      const usersAtEnd = await helper.usersInDb()
+
+      expect(usersAtEnd.length).toBe(usersAtStart.length)
+
+      expect(result.body.error).toContain('username', 'password', 'required')
+
     })
   })
 
