@@ -120,6 +120,50 @@ describe('when there is initial users saved', () => {
       expect(result.body.error).toContain('username', 'password', 'required')
 
     })
+
+    test('creating an user with no username fails with status 400 and returns an error message', async () => {
+      const usersAtStart = await helper.usersInDb()
+
+      newUser = {
+        //username missing
+        name: 'abcdefg',
+        password: 'salasana'
+      }
+
+      const result = await api
+        .post(API_BASE_URL)
+        .send(newUser)
+        .expect(400)
+
+      const usersAtEnd = await helper.usersInDb()
+
+      expect(usersAtEnd.length).toBe(usersAtStart.length)
+
+      expect(result.body.error).toContain('username', 'password', 'required')
+
+    })
+
+    test('creating an user with no username and no password fails with status 400 and returns an error message', async () => {
+      const usersAtStart = await helper.usersInDb()
+
+      newUser = {
+        // username missing
+        name: 'abcdefg'
+        //password missing
+      }
+
+      const result = await api
+        .post(API_BASE_URL)
+        .send(newUser)
+        .expect(400)
+
+      const usersAtEnd = await helper.usersInDb()
+
+      expect(usersAtEnd.length).toBe(usersAtStart.length)
+
+      expect(result.body.error).toContain('username', 'password', 'required')
+
+    })
   })
 
 })
