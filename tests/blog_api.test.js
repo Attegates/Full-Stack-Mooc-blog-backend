@@ -19,8 +19,8 @@ let decodedToken  // to get the id of the authorized user
 beforeAll(async () => {
   await User.deleteMany({})
   const newUser = {
-    username: 'attegates',
-    name: 'Atte Gates',
+    username: '73571',
+    name: 'Testi Tester',
     password: 'salasana'
   }
   // save by using the api because the api handles hashing the password
@@ -30,15 +30,15 @@ beforeAll(async () => {
     .post(API_USERS_URL)
     .send(newUser)
 
-  await api
   const userToLogin = {
-    username: 'attegates',
-    password: 'salasana'
+    username: newUser.username,
+    password: newUser.password
   }
 
   const response = await api
     .post(API_LOGIN_URL)
     .send(userToLogin)
+
 
   token = response.body.token
   decodedToken = jwt.verify(token, process.env.SECRET)
@@ -53,9 +53,26 @@ describe('when there is initial blogs saved', () => {
 
     const blogObjects = helper.initialBlogs.map(blog => new Blog(blog))
 
-    const promiseArray = blogObjects.map(blog => blog.save())
-    await Promise.all(promiseArray)
+    // save blogs through the api so user is automatically added
+    // saving straight to the db does not define a user who added the blog to the blog entry.    
+    /*
+    const promiseArray = blogObjects.map(blog => {
+      return api
+        .post(API_BLOGS_URL)
+        .set('Authorization', `Bearer ${token}`)
+        .send(blog)
+    })
+    */
+    //await Promise.all(promiseArray)
 
+    // do this sequently. await Promise.all(...) version does things concurrently and messes up the blogs[] field of the user.
+    // since mongodb does not guarantee the data to be up to date this might not be a good way to do this ??? but it seems to work for now.
+    for (let i = 0; i < blogObjects.length; i++) {
+      let result = await api
+        .post(API_BLOGS_URL)
+        .set('Authorization', `Bearer ${token}`)
+        .send(blogObjects[i])
+    }
   })
 
   test('all blogs are returned', async () => {
@@ -75,7 +92,6 @@ describe('when there is initial blogs saved', () => {
 
   describe('adding a blog', () => {
 
-
     test('a valid blog can be added when request contains valid auth token', async () => {
       const newBlog = {
         title: "BLACK METAL IST KRIEG",
@@ -84,7 +100,7 @@ describe('when there is initial blogs saved', () => {
         likes: 14,
       }
 
-      await api
+      const response = await api
         .post(API_BLOGS_URL)
         .set('Authorization', `Bearer ${token}`)
         .send(newBlog)
@@ -100,7 +116,7 @@ describe('when there is initial blogs saved', () => {
         author: "Atte Gates",
         url: "666",
         likes: 14,
-        user: mongoose.Types.ObjectId(decodedToken.id)  // should be the id of the user who added the entry NOTE! in Object form and decodedToken.id is in String form
+        user: mongoose.Types.ObjectId(decodedToken.id)  // should be the id of the user who added the entry NOTE! in Object form and decodedToken.id is in String form so cast it into mongoose ObjectId
       })
 
     })
@@ -207,12 +223,13 @@ describe('when there is initial blogs saved', () => {
   })
 
   describe('deleting a blog', () => {
-    test('existing blog is deleted and returns 204', async () => {
+    test('existing blog is deleted and returns 204 when authorized user deletes their own entry', async () => {
       const blogsAtStart = await helper.blogsInDb()
       const blogToDelete = blogsAtStart[0]
 
       await api
         .delete(`${API_BLOGS_URL}/${blogToDelete.id}`)
+        .set('Authorization', `Bearer ${token}`)
         .expect(204)
 
       const blogsAtEnd = await helper.blogsInDb()
@@ -224,14 +241,65 @@ describe('when there is initial blogs saved', () => {
       expect(ids).not.toContain(blogToDelete.id)
 
     })
-    test('DELETE to non existing id does not remove anything and returns 204', async () => {
+    test('DELETE to non existing id does not remove anything and returns 204 when authorized user tries to delete an entry', async () => {
       const blogsAtStart = await helper.blogsInDb()
 
       const nonExistingId = await helper.nonExistingId()
 
       await api
         .delete(`${API_BLOGS_URL}/${nonExistingId}`)
+        .set('Authorization', `Bearer ${token}`)
         .expect(204)
+
+      const blogsAtEnd = await helper.blogsInDb()
+
+      expect(blogsAtEnd.length).toBe(helper.initialBlogs.length)
+    })
+
+    test('cannot delete blog entry with invalid token', async () => {
+      const blogsAtStart = await helper.blogsInDb()
+      const blogToDelete = blogsAtStart[0]
+
+      await api
+        .delete(`${API_BLOGS_URL}/${blogToDelete.id}`)
+        .set('Authorization', `Bearer ${token.substring(1)}`)
+        .expect(401)
+
+      const blogsAtEnd = await helper.blogsInDb()
+
+      expect(blogsAtEnd.length).toBe(helper.initialBlogs.length)
+    })
+
+    test('cannot delete another users blog entry', async () => {
+      const blogsAtStart = await helper.blogsInDb()
+      const blogToDelete = blogsAtStart[0]
+
+      // create a new user and login
+      const user = {
+        username: 'persephone',
+        name: 'Persephone',
+        password: 'salasana'
+      }
+      await api
+        .post(API_USERS_URL)
+        .send(user)
+    
+      const login = {
+        username: user.username,
+        password: user.password
+      }
+    
+      const response = await api
+        .post(API_LOGIN_URL)
+        .send(login)
+    
+    
+      const testToken = response.body.token
+      
+      await api
+        .delete(`${API_BLOGS_URL}/${blogToDelete.id}`)
+        .set('Authorization', `Bearer ${testToken}`)
+        .expect(403)
 
       const blogsAtEnd = await helper.blogsInDb()
 
@@ -256,7 +324,15 @@ describe('when there is initial blogs saved', () => {
       const blogsAtEnd = await helper.blogsInDb()
       expect(blogsAtEnd.length).toBe(helper.initialBlogs.length)
 
-      expect(response.body).toEqual(blogToUpdate)
+      expect(blogsAtEnd).toContainEqual({
+        id: blogToUpdate.id,
+        title: blogToUpdate.title,
+        author: blogToUpdate.author,
+        url: blogToUpdate.url,
+        likes: newLikes,
+        user: expect.any(Object)
+      })
+
 
     })
 
