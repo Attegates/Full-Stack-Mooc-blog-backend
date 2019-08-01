@@ -121,10 +121,18 @@ blogsRouter.get('/:id/comments', async (request, response, next) => {
   // get all comments for specidief blog id
   try {
     const comments = await Comment.find({ blog: request.params.id })
-    console.log(comments)
     response.json(comments.map(c => c.toJSON()))
   } catch (exception) {
     console.error(exception)
+    next(exception)
+  }
+})
+
+blogsRouter.get('/comments', async (request, response, next) => {
+  try {
+    const comments = await Comment.find({})
+    response.json(comments.map(c => c.toJSON()))
+  } catch (exception) {
     next(exception)
   }
 })
