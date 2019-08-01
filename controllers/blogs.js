@@ -1,5 +1,6 @@
 const blogsRouter = require('express').Router()
 const Blog = require('../models/blog')
+const Comment = require('../models/comment')
 const User = require('../models/user')
 const jwt = require('jsonwebtoken')
 
@@ -92,6 +93,40 @@ blogsRouter.put('/:id', async (request, response) => {
   console.log(updatedBlog.toJSON())
   response.json(updatedBlog.toJSON())
 
+})
+
+blogsRouter.post('/:id/comments', async (request, response) => {
+
+  try {
+    const commentContent = request.body.content
+    console.log(commentContent)
+    const blog = await Blog.findById(request.params.id)
+    console.log(blog)
+    const newComment = new Comment({
+      // perhaps could just use the param :id?
+      blog: blog._id,
+      content: commentContent,
+    })
+
+    savedComment = await newComment.save()
+    console.log(savedComment.toJSON())
+    response.status(200).json(savedComment.toJSON())
+  } catch (exception) {
+    console.error(exception)
+  }
+
+})
+
+blogsRouter.get('/:id/comments', async (request, response, next) => {
+  // get all comments for specidief blog id
+  try {
+    const comments = await Comment.find({ blog: request.params.id })
+    console.log(comments)
+    response.json(comments.map(c => c.toJSON()))
+  } catch (exception) {
+    console.error(exception)
+    next(exception)
+  }
 })
 
 module.exports = blogsRouter
